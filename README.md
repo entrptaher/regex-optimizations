@@ -17,4 +17,10 @@ Optimize regex for better future.
 - `(aXe | bXf | cXg)`  NOT   `[abc]X[efg]` because `cXe` is not allowed.
 - `(abc | abd | abe)` to `(a(bc|bd)) | abe` to `a(bc|bd|be)` to `(a(b(c|d|e)))` to `(a(b([cde])))` to `ab[c-e]`
 - `(aab | ab)` to `a(ab|b)` to `a(a|)b` to `a{1,2}b`
-- `\w+ \w+ \w+ \w+ \w+ \w+ \d+` to `(\w+\s){6}\d+`
+- `\w+ \w+ \w+ \w+ \w+ \w+ \d+` to `\w+\s\w+\s\w+\s\w+\s\w+\s\w+\s\d+` to `(\w+\s){6}\d+`
+
+# TODO:
+
+- Add `tests` with examples
+- Create the solutions
+- Publish on npm or somewhere
