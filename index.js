@@ -3,45 +3,6 @@ const regExpFromString = require("./modules/regexp-from-string");
 const escapeRegExp = require("./modules/escape-regex");
 const unescapeRegExp = require("./modules/unescape-regex");
 
-class RegexWorker {
-  constructor(regex, params = {}) {
-    this.input = regex;
-    this.output = {
-      regex: regex,
-      string: regex.toString()
-    };
-    this.finalRegex = regex.toString();
-    this.finalRegexObj = regex;
-    this.switchOptimizationLevels(params);
-  }
-  replaceSpace() {
-    this.finalRegex = this.finalRegex.replace(/\s/gim, "\\s");
-    return this;
-  }
-  convertToRegex() {
-    this.finalRegexObj = regExpFromString(this.finalRegex);
-    return this;
-  }
-  optimizeLevel1() {
-    // this.replaceSpace();
-    this.convertToRegex();
-    return this;
-  }
-  switchOptimizationLevels(params) {
-    switch (params.level) {
-      case 1:
-        this.optimizeLevel1();
-        break;
-      default:
-    }
-  }
-  // extract main regex pattern from string
-  extractMainPattern(str) {
-    const [full, expression, flag] = str.match(/^\/(.*?)\/([gimuy]*)$/);
-    return { expression, flag };
-  }
-}
-
 function extractMainPattern(str) {
   const [full, expression, flag] = str.match(/^\/(.*?)\/([gimuy]*)$/);
   return { expression, flag };
@@ -84,10 +45,18 @@ function getRegexBack(str, flags) {
   return new RegExp(unescapeRegExp(str), flags);
 }
 
+/*
+Simple Merge:
+(\w+ ){2}\w+ -> (\w+ ){3}
+\w+ \w+ \w+ \w+ \w+ \d+ -> (\w+\s){5}\d+
+\w+ \w+.\w+ \w+ \w+ \d+ -> (\w+ \w+)(\.)(\w+ ){2}\w+ \d+ -> (\w+ \w+)(\.)(\w+ ){3}\d+
+*/
 
-const source = /\w+ \w+ \w+ \w+ \w+ \d+/gi;
-const newReg = new RegexWorker(source, { level: 1 });
-
+/**
+ * Simple optimizer container
+ * @param {*} regex 
+ * @param {*} filler 
+ */
 function s1(regex, filler) {
   if (typeof regex === "object") {
     regex = regex.toString();
@@ -99,27 +68,20 @@ function s1(regex, filler) {
   return finalReg;
 }
 
-// s1(newReg.finalRegex)
-unrefinedRegex = /\w+ \w+ \w+ \w+ \w+ \w+ \d+/gi;
-refinedRegex = s1(unrefinedRegex);
-// s2 = s1(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/, '\\d+')
+// // s1(newReg.finalRegex)
+// unrefinedRegex = /\w+ \w+ \w+ \w+ \w+ \w+ \d+/gi;
+// refinedRegex = s1(unrefinedRegex);
+// // s2 = s1(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/, '\\d+')
 
-const testWord = `enter sample word or number like 123`;
-/*console.log(
-  unrefinedRegex,
-  refinedRegex,
-  testWord.match(unrefinedRegex),
-  testWord.match(refinedRegex)
-);
+// const testWord = `enter sample word or number like 123`;
 
-Simple Merge:
-(\w+ ){2}\w+ -> (\w+ ){3}
-\w+ \w+ \w+ \w+ \w+ \d+ -> (\w+\s){5}\d+
-\w+ \w+.\w+ \w+ \w+ \d+ -> (\w+ \w+)(\.)(\w+ ){2}\w+ \d+ -> (\w+ \w+)(\.)(\w+ ){3}\d+
-*/
+// console.log({
+//   unrefinedRegex,
+//   refinedRegex
+// });
 
 const arguments = process.argv[2];
-if(arguments){
-	console.log(`Unrefined: ${arguments}`)
-	console.log(`Refined: ${s1(regExpFromString(arguments))}`)
+if (arguments) {
+  console.log(`Unrefined: ${arguments}`);
+  console.log(`Refined: ${s1(regExpFromString(arguments))}`);
 }
