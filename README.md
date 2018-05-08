@@ -1,5 +1,5 @@
 # regex-optimizations
-Optimize regex for better future.
+Optimize regex for better future. Check `index.js` for some sample code as `proof of concept`.
 
 # Goal: 
 
