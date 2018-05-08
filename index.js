@@ -2,11 +2,8 @@ const getArrayRepeatations = require("./modules/get-array-repeatations");
 const regExpFromString = require("./modules/regexp-from-string");
 const escapeRegExp = require("./modules/escape-regex");
 const unescapeRegExp = require("./modules/unescape-regex");
-
-function extractMainPattern(str) {
-  const [full, expression, flag] = str.match(/^\/(.*?)\/([gimuy]*)$/);
-  return { expression, flag };
-}
+const extractMainPattern = require("./modules/extract-main-pattern");
+const getRegexBack = require("./modules/get-regex-back");
 
 function sortenSimple(data, filler = " ") {
   const x = data;
@@ -41,10 +38,6 @@ function sortenSimple(data, filler = " ") {
   return plugReplace(y);
 }
 
-function getRegexBack(str, flags) {
-  return new RegExp(unescapeRegExp(str), flags);
-}
-
 /*
 Simple Merge:
 (\w+ ){2}\w+ -> (\w+ ){3}
@@ -54,8 +47,8 @@ Simple Merge:
 
 /**
  * Simple optimizer container
- * @param {*} regex 
- * @param {*} filler 
+ * @param {*} regex
+ * @param {*} filler
  */
 function s1(regex, filler) {
   if (typeof regex === "object") {
@@ -68,20 +61,10 @@ function s1(regex, filler) {
   return finalReg;
 }
 
-// // s1(newReg.finalRegex)
-// unrefinedRegex = /\w+ \w+ \w+ \w+ \w+ \w+ \d+/gi;
-// refinedRegex = s1(unrefinedRegex);
-// // s2 = s1(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/, '\\d+')
-
-// const testWord = `enter sample word or number like 123`;
-
-// console.log({
-//   unrefinedRegex,
-//   refinedRegex
-// });
-
 const arguments = process.argv[2];
 if (arguments) {
-  console.log(`Unrefined: ${arguments}`);
-  console.log(`Refined: ${s1(regExpFromString(arguments))}`);
+  const unrefined = arguments;
+  const refined = s1(regExpFromString(arguments));
+
+  console.log({ unrefined, refined });
 }
