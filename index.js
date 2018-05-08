@@ -1,70 +1,139 @@
-const getArrayRepeatations = require("./modules/get-array-repeatations");
-const regExpFromString = require("./modules/regexp-from-string");
-const escapeRegExp = require("./modules/escape-regex");
-const unescapeRegExp = require("./modules/unescape-regex");
-const extractMainPattern = require("./modules/extract-main-pattern");
-const getRegexBack = require("./modules/get-regex-back");
+function chunk(arr, chunkSize) {
+  var R = [];
+  for (var i = 0, len = arr.length; i < len; i += chunkSize)
+    R.push(arr.slice(i, i + chunkSize));
+  return R;
+}
 
-function sortenSimple(data, filler = " ") {
-  const x = data;
-  const y = escapeRegExp(x.expression);
-  const z = x.expression.split(filler);
+function isString(input) {
+  return typeof regex === "string";
+}
 
-  const duplicates = getArrayRepeatations(z, { duplicateInRow: true });
-  const entries = Object.entries(duplicates);
+function extractMainPattern(str) {
+  const [full, expression, flag] = str.match(/^\/(.*?)\/([gimuy]*)$/);
+  return { expression, flag };
+}
 
-  function processGetEntry(target, pattern, time) {
-    const b = `${pattern}${filler}`;
-    const ctimes0 = escapeRegExp(b);
-    const ctimes1 = escapeRegExp(ctimes0);
-    const ctimes3 = ctimes1.repeat(time);
-    const c = new RegExp(ctimes3, "im");
-    const d = target.replace(c, `(${ctimes0}){${time}}`);
-    return d;
+function escapeRegExp(str) {
+  return str.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+}
+
+function unescapeRegExp(string) {
+  return string.replace(/\\(.)/g, "$1");
+}
+
+function getRegexBack(str, flags) {
+  return new RegExp(unescapeRegExp(str), flags);
+}
+
+function getArrayRepeatations(arr, { duplicateInRow } = {}) {
+  const counts = {};
+
+  function createNonExist(x, n = 0) {
+    if (!counts[x]) counts[x] = [n];
   }
 
-  function plugReplace(y) {
-    let f = y;
-    for (let [pattern, times] of entries) {
-      for (let time of times) {
-        if (time > 1) {
-          f = processGetEntry(f, pattern, time);
+  function increaseCount(x) {
+    ++counts[x][counts[x].length - 1];
+  }
+  function lastLength(x) {
+    return counts[x][counts[x].length - 1];
+  }
+
+  function duplicateCheck(arr, x, i) {
+    if (duplicateInRow) {
+      const prevSame = arr[i - 1] && arr[i - 1] == arr[i];
+      if (!prevSame) {
+        const last = lastLength(x);
+        if (last === 0) increaseCount(x);
+        if (last > 1) {
+          counts[x].push(1);
         }
       }
+      return prevSame;
     }
-    return f;
+    return true;
   }
 
-  return plugReplace(y);
+  arr.forEach((x, i) => {
+    createNonExist(x);
+    if (duplicateCheck(arr, x, i)) {
+      increaseCount(x);
+    }
+  });
+
+  return counts;
 }
+
+function removeEmptyRegBlocks(str) {
+  return str.replace(/\(\)/gm, "");
+}
+
+function removeEmptySpaceBacklash(str) {
+  return str.replace(/(\\ )/gm, " ");
+}
+
+class RegexWorker {
+  constructor(regex, params = {}) {
+    this.input = {
+      regex: isString(regex) ? new RegExp(regex) : regex,
+      string: isString(regex) ? regex : regex.toString()
+    };
+    this.extracted = extractMainPattern(this.input.string);
+    this.output = {};
+    this.levelSwitch(params.level);
+  }
+  levelSwitch(level = 0) {
+    switch (level) {
+      default:
+        let simplified = this.simplifyBySpace(this.extracted);
+        simplified = removeEmptyRegBlocks(simplified);
+        simplified = removeEmptySpaceBacklash(simplified);
+        console.log(simplified);
+        this.output.regex = new RegExp(simplified, this.extracted.flag);
+        this.output.string = this.output.regex.toString();
+        return;
+    }
+  }
+  simplifyBySpace(input) {
+    let current = input;
+    // Simplify one with space in them
+    const { expression } = current;
+    const splitter = ` `;
+    const expressionSplitted = current.expression.split(splitter);
+    const duplicates = getArrayRepeatations(expressionSplitted, {
+      duplicateInRow: true
+    });
+    const entries = Object.entries(duplicates);
+
+    function refillTarget(target, pattern, time) {
+      const newPattern = `${pattern}${splitter}`;
+      const repeatUptoTime = newPattern.repeat(time);
+      const finder = new RegExp(escapeRegExp(repeatUptoTime), "im");
+      const replacer = `(${newPattern}){${time}}`;
+      return target.replace(finder, replacer);
+    }
+
+    function replacer() {
+      let expHolder = expression.slice(0);
+      for (let [pattern, times] of entries) {
+        for (let time of times) {
+          if (time > 1) {
+            expHolder = refillTarget(expHolder, pattern, time);
+          }
+        }
+      }
+      return expHolder;
+    }
+
+    return replacer();
+  }
+}
+
+module.exports = RegexWorker;
 
 /*
-Simple Merge:
-(\w+ ){2}\w+ -> (\w+ ){3}
-\w+ \w+ \w+ \w+ \w+ \d+ -> (\w+\s){5}\d+
-\w+ \w+.\w+ \w+ \w+ \d+ -> (\w+ \w+)(\.)(\w+ ){2}\w+ \d+ -> (\w+ \w+)(\.)(\w+ ){3}\d+
+USAGE: 
+const worker = new RegexWorker(/()(\w+\ \w+\ \w+\ \w+\ \w+\ \w+\ \d+)()/gi);
+console.log(worker);
 */
-
-/**
- * Simple optimizer container
- * @param {*} regex
- * @param {*} filler
- */
-function s1(regex, filler) {
-  if (typeof regex === "object") {
-    regex = regex.toString();
-  }
-
-  const pat = extractMainPattern(regex);
-  const newStr = sortenSimple(pat, filler);
-  const finalReg = getRegexBack(newStr, pat.flag);
-  return finalReg;
-}
-
-const arguments = process.argv[2];
-if (arguments) {
-  const unrefined = arguments;
-  const refined = s1(regExpFromString(arguments));
-
-  console.log({ unrefined, refined });
-}
